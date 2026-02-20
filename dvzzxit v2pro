@@ -1,0 +1,303 @@
+-- dvzxit V2 | ESP + Aimbot + TeamCheck + HUD bonito + FPS + FOV Visual + mudar alvo + minimizar menu (fix)
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local ESP_ENABLED = true
+local AIMBOT_ENABLED = false
+local TEAMCHECK_ENABLED = true
+local AIMPARTS = {"Head", "HumanoidRootPart"}
+local aimPartIndex = 1
+local AIMBOT_FOV = 120
+local AIMBOT_SMOOTHNESS = 0.18
+
+local BoxColor = Color3.fromRGB(0, 255, 0)
+local TracerColor = Color3.fromRGB(255, 0, 0)
+local FOVColor = Color3.fromRGB(255,255,60)
+local colorPresets = {
+    Color3.fromRGB(0,255,0),
+    Color3.fromRGB(70,170,255),
+    Color3.fromRGB(255,255,40),
+    Color3.fromRGB(255,0,80),
+    Color3.fromRGB(255,170,60),
+    Color3.fromRGB(120,0,255),
+}
+local colorNames = {"Verde","Azul","Amarelo","Rosa","Laranja","Roxo"}
+local colorIndex = 1
+
+-- HUD positions
+local panelX, panelY, spacing = 38, 38, 32
+local minimized = false
+
+local panelTitle = Drawing.new("Text")
+panelTitle.Size = 22
+panelTitle.Color = Color3.fromRGB(0,170,255)
+panelTitle.Position = Vector2.new(panelX, panelY)
+panelTitle.Center = false
+panelTitle.Outline = true
+panelTitle.Visible = true
+panelTitle.Text = "dvzxit ESP V2"
+
+local panelBtnMin = Drawing.new("Text")
+panelBtnMin.Size = 22
+panelBtnMin.Color = Color3.fromRGB(220,220,220)
+panelBtnMin.Position = Vector2.new(panelX+260, panelY)
+panelBtnMin.Center = false
+panelBtnMin.Visible = true
+panelBtnMin.Text = "-"
+
+local panelBtnESP = Drawing.new("Text")
+panelBtnESP.Size = 17
+panelBtnESP.Position = Vector2.new(panelX, panelY+spacing)
+panelBtnESP.Center = false
+panelBtnESP.Visible = true
+panelBtnESP.Text = "[ESP]"
+
+local panelBtnAimbot = Drawing.new("Text")
+panelBtnAimbot.Size = 17
+panelBtnAimbot.Position = Vector2.new(panelX+64, panelY+spacing)
+panelBtnAimbot.Center = false
+panelBtnAimbot.Visible = true
+panelBtnAimbot.Text = "[Aimbot]"
+
+local panelBtnTeam = Drawing.new("Text")
+panelBtnTeam.Size = 17
+panelBtnTeam.Position = Vector2.new(panelX+154, panelY+spacing)
+panelBtnTeam.Center = false
+panelBtnTeam.Visible = true
+panelBtnTeam.Text = "[Team]"
+
+local panelBtnCor = Drawing.new("Text")
+panelBtnCor.Size = 17
+panelBtnCor.Position = Vector2.new(panelX+224, panelY+spacing)
+panelBtnCor.Center = false
+panelBtnCor.Visible = true
+panelBtnCor.Text = "[Cor]"
+
+local panelBtnHitpart = Drawing.new("Text")
+panelBtnHitpart.Size = 17
+panelBtnHitpart.Position = Vector2.new(panelX+280, panelY+spacing)
+panelBtnHitpart.Center = false
+panelBtnHitpart.Visible = true
+panelBtnHitpart.Text = "[Alvo]"
+
+local panelStatus = Drawing.new("Text")
+panelStatus.Size = 16
+panelStatus.Color = Color3.fromRGB(255,255,255)
+panelStatus.Position = Vector2.new(panelX, panelY+spacing*2)
+panelStatus.Center = false
+panelStatus.Visible = true
+
+local panelFPS = Drawing.new("Text")
+panelFPS.Size = 15
+panelFPS.Color = Color3.fromRGB(120,255,120)
+panelFPS.Position = Vector2.new(panelX, panelY+spacing*3)
+panelFPS.Center = false
+panelFPS.Visible = true
+
+local panelFOV = Drawing.new("Text")
+panelFOV.Size = 15
+panelFOV.Color = FOVColor
+panelFOV.Position = Vector2.new(panelX, panelY+spacing*4)
+panelFOV.Center = false
+panelFOV.Visible = true
+
+local panel = Drawing.new("Text")
+panel.Size = 18
+panel.Color = Color3.fromRGB(255,255,255)
+panel.Position = Vector2.new(panelX, panelY+spacing*5)
+panel.Visible = true
+
+local function updateHUD()
+    panelBtnESP.Color = ESP_ENABLED and Color3.fromRGB(80,255,80) or Color3.fromRGB(255,70,70)
+    panelBtnAimbot.Color = AIMBOT_ENABLED and Color3.fromRGB(80,255,80) or Color3.fromRGB(255,70,70)
+    panelBtnTeam.Color = TEAMCHECK_ENABLED and Color3.fromRGB(120,255,80) or Color3.fromRGB(255,80,60)
+    panelBtnCor.Color = colorPresets[colorIndex]
+    panelBtnHitpart.Text = "[Alvo] ("..AIMPARTS[aimPartIndex]..")"
+    panelBtnHitpart.Color = Color3.fromRGB(255,255,110)
+    panelBtnMin.Text = minimized and "+" or "-"
+    panelStatus.Text = "[F1] ESP | [F2] Aimbot | [F3] Team | [F4/F5] FOV | [F6] Alvo | [F7] Min"
+    panelFPS.Text = "FPS: "..math.floor(fps)
+    panelFOV.Text = "Aimbot FOV: "..AIMBOT_FOV.."  |  Cor: "..colorNames[colorIndex].."  | Alvo: "..AIMPARTS[aimPartIndex]
+    panel.Text = "dvzxit V2\n"
+        .."[F1] ESP: "..tostring(ESP_ENABLED).."   "
+        .."[F2] Aimbot: "..tostring(AIMBOT_ENABLED).."\n"
+        .."[F3] TeamCheck: "..tostring(TEAMCHECK_ENABLED).."   "
+        .."[F4/F5] FOV: "..tostring(AIMBOT_FOV).."\n"
+        .."[F6] Alvo: "..AIMPARTS[aimPartIndex].."\n"
+        .."[F7] Minimizar\n"
+        .."FPS: "..math.floor(fps)
+
+    -- Visibilidade correta
+    panelTitle.Visible = true
+    panelBtnMin.Visible = true
+    local show = not minimized
+    panelBtnESP.Visible = show
+    panelBtnAimbot.Visible = show
+    panelBtnTeam.Visible = show
+    panelBtnCor.Visible = show
+    panelBtnHitpart.Visible = show
+    panelStatus.Visible = show
+    panelFPS.Visible = show
+    panelFOV.Visible = show
+    panel.Visible = show
+end
+
+local fps = 60
+local lastFrame = os.clock()
+RunService.RenderStepped:Connect(function()
+    local now = os.clock()
+    fps = 1/(now-lastFrame)
+    lastFrame = now
+    updateHUD()
+end)
+
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.F1 then ESP_ENABLED = not ESP_ENABLED
+    elseif input.KeyCode == Enum.KeyCode.F2 then AIMBOT_ENABLED = not AIMBOT_ENABLED
+    elseif input.KeyCode == Enum.KeyCode.F3 then TEAMCHECK_ENABLED = not TEAMCHECK_ENABLED
+    elseif input.KeyCode == Enum.KeyCode.F4 then AIMBOT_FOV = math.max(AIMBOT_FOV - 10, 20)
+    elseif input.KeyCode == Enum.KeyCode.F5 then AIMBOT_FOV = math.min(AIMBOT_FOV + 10, 400)
+    elseif input.KeyCode == Enum.KeyCode.F6 then aimPartIndex = aimPartIndex % #AIMPARTS + 1
+    elseif input.KeyCode == Enum.KeyCode.F7 then minimized = not minimized; updateHUD()
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(input,gp)
+    if gp then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        local mouse = UserInputService:GetMouseLocation()
+        if mouse.X >= panelBtnMin.Position.X and mouse.X <= panelBtnMin.Position.X+22
+        and mouse.Y >= panelBtnMin.Position.Y and mouse.Y <= panelBtnMin.Position.Y+22 then
+            minimized = not minimized
+            updateHUD()
+            return
+        end
+        if minimized then return end
+        if mouse.X >= panelBtnESP.Position.X and mouse.X <= panelBtnESP.Position.X+54
+        and mouse.Y >= panelBtnESP.Position.Y and mouse.Y <= panelBtnESP.Position.Y+22 then
+            ESP_ENABLED = not ESP_ENABLED
+        elseif mouse.X >= panelBtnAimbot.Position.X and mouse.X <= panelBtnAimbot.Position.X+74
+        and mouse.Y >= panelBtnAimbot.Position.Y and mouse.Y <= panelBtnAimbot.Position.Y+22 then
+            AIMBOT_ENABLED = not AIMBOT_ENABLED
+        elseif mouse.X >= panelBtnTeam.Position.X and mouse.X <= panelBtnTeam.Position.X+58
+        and mouse.Y >= panelBtnTeam.Position.Y and mouse.Y <= panelBtnTeam.Position.Y+22 then
+            TEAMCHECK_ENABLED = not TEAMCHECK_ENABLED
+        elseif mouse.X >= panelBtnCor.Position.X and mouse.X <= panelBtnCor.Position.X+42
+        and mouse.Y >= panelBtnCor.Position.Y and mouse.Y <= panelBtnCor.Position.Y+22 then
+            colorIndex = colorIndex % #colorPresets + 1
+        elseif mouse.X >= panelBtnHitpart.Position.X and mouse.X <= panelBtnHitpart.Position.X+70
+        and mouse.Y >= panelBtnHitpart.Position.Y and mouse.Y <= panelBtnHitpart.Position.Y+22 then
+            aimPartIndex = aimPartIndex % #AIMPARTS + 1
+        end
+    end
+end)
+
+local tracers = {}
+local boxes = {}
+local lastCircle = nil
+
+RunService.RenderStepped:Connect(function()
+    -- Limpa desenhos do frame anterior
+    for _,tracer in pairs(tracers) do pcall(function() tracer:Remove() end) end
+    for _,box in pairs(boxes) do pcall(function() box:Remove() end) end
+    if lastCircle then pcall(function() lastCircle:Remove() end) end
+    tracers, boxes, lastCircle = {}, {}, nil
+
+    local cam = workspace.CurrentCamera
+
+    -- FOV visual
+    if AIMBOT_ENABLED then
+        local circle = Drawing.new("Circle")
+        circle.Transparency = 0.7
+        circle.Filled = false
+        circle.Thickness = 2
+        circle.Color = FOVColor
+        circle.Position = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
+        circle.Radius = AIMBOT_FOV
+        circle.Visible = true
+        lastCircle = circle
+    end
+
+    -- ESP
+    if ESP_ENABLED then
+        for _,player in pairs(Players:GetPlayers()) do
+            local partName = AIMPARTS[aimPartIndex]
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(partName) then
+                local show = true
+                if TEAMCHECK_ENABLED then
+                    show = false
+                    if player.Team ~= nil and LocalPlayer.Team ~= nil and player.Team ~= LocalPlayer.Team then
+                        show = true
+                    end
+                end
+                if show then
+                    local part = player.Character[partName]
+                    local pos, onscreen = cam:WorldToViewportPoint(part.Position)
+                    if onscreen then
+                        local size = 28
+                        local box = Drawing.new("Quad")
+                        box.Color = colorPresets[colorIndex]
+                        box.Thickness = 2
+                        box.Visible = true
+                        box.PointA = Vector2.new(pos.X-size/2, pos.Y-size)
+                        box.PointB = Vector2.new(pos.X+size/2, pos.Y-size)
+                        box.PointC = Vector2.new(pos.X+size/2, pos.Y+size/2)
+                        box.PointD = Vector2.new(pos.X-size/2, pos.Y+size/2)
+                        table.insert(boxes, box)
+                        local tracer = Drawing.new("Line")
+                        tracer.Color = colorPresets[colorIndex]
+                        tracer.Thickness = 2
+                        tracer.Visible = true
+                        tracer.From = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y)
+                        tracer.To = Vector2.new(pos.X, pos.Y)
+                        table.insert(tracers, tracer)
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- Aimbot + TeamCheck + FOV | usa a parte selecionada
+local function getClosestTarget()
+    local cam = workspace.CurrentCamera
+    local center = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
+    local partName = AIMPARTS[aimPartIndex]
+    local closest, minDist = nil, AIMBOT_FOV
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(partName) then
+            local doTarget = true
+            if TEAMCHECK_ENABLED then
+                doTarget = false
+                if player.Team ~= nil and LocalPlayer.Team ~= nil and player.Team ~= LocalPlayer.Team then
+                    doTarget = true
+                end
+            end
+            if doTarget then
+                local part = player.Character[partName]
+                local pos, onscreen = cam:WorldToViewportPoint(part.Position)
+                if onscreen then
+                    local dist = (Vector2.new(pos.X,pos.Y)-center).Magnitude
+                    if dist < minDist then
+                        minDist = dist
+                        closest = part
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+RunService.RenderStepped:Connect(function()
+    if not AIMBOT_ENABLED then return end
+    local target = getClosestTarget()
+    if target then
+        local cam = workspace.CurrentCamera
+        cam.CFrame = cam.CFrame:Lerp(CFrame.new(cam.CFrame.Position, target.Position), AIMBOT_SMOOTHNESS)
+    end
+end)
