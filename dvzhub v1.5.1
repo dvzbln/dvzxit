@@ -1,0 +1,220 @@
+-- DVZHUB V1.5.1 - TOTAL ESP & TRACER REBUILD
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+-- Configurações Globais
+local _G = {
+    ESP = false,
+    Tracers = false,
+    Aimbot = false,
+    TeamCheck = false,
+    WallCheck = true,
+    FOV = 100,
+    TargetPart = "Head",
+    Color = Color3.fromRGB(0, 255, 255),
+    Visible = true
+}
+
+-- Limpeza total de execuções anteriores
+if CoreGui:FindFirstChild("DVZHUB_V151") then CoreGui.DVZHUB_V151:Destroy() end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "DVZHUB_V151"
+ScreenGui.Parent = CoreGui
+
+-- UI - Main Frame
+local Main = Instance.new("Frame")
+Main.Size = UDim2.new(0, 340, 0, 230) 
+Main.Position = UDim2.new(0.3, 0, 0.3, 0)
+Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Main.BorderSizePixel = 0
+Main.Active = true
+Main.Draggable = true
+Main.Visible = _G.Visible
+Main.Parent = ScreenGui
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
+
+-- Botão D (Indicador de Status)
+local MiniMap = Instance.new("TextButton")
+MiniMap.Size = UDim2.new(0, 45, 0, 45)
+MiniMap.Position = UDim2.new(0.05, 0, 0.05, 0)
+MiniMap.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MiniMap.Text = "D"
+MiniMap.TextSize = 24
+MiniMap.Font = Enum.Font.GothamBold
+MiniMap.Visible = not _G.Visible
+MiniMap.Active = true
+MiniMap.Draggable = true
+MiniMap.Parent = ScreenGui
+Instance.new("UICorner", MiniMap).CornerRadius = UDim.new(0, 10)
+
+local MiniStroke = Instance.new("UIStroke", MiniMap)
+MiniStroke.Thickness = 2
+MiniStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+local MiniFPS = Instance.new("TextLabel")
+MiniFPS.Size = UDim2.new(1, 0, 0, 20)
+MiniFPS.Position = UDim2.new(0, 0, 1, 2)
+MiniFPS.BackgroundTransparency = 1
+MiniFPS.TextColor3 = Color3.new(1, 1, 1)
+MiniFPS.TextSize = 12 
+MiniFPS.Font = Enum.Font.GothamBold
+MiniFPS.Parent = MiniMap
+
+-- Header & Grid
+local Glow = Instance.new("Frame", Main)
+Glow.Size = UDim2.new(1, 0, 0, 3)
+
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.Text = "DVZHUB V1.5.1"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.Font = Enum.Font.GothamBold
+Title.BackgroundTransparency = 1
+
+local ButtonContainer = Instance.new("Frame", Main)
+ButtonContainer.Size = UDim2.new(0.92, 0, 0.72, 0)
+ButtonContainer.Position = UDim2.new(0.04, 0, 0.22, 0)
+ButtonContainer.BackgroundTransparency = 1
+
+local Grid = Instance.new("UIGridLayout", ButtonContainer)
+Grid.CellSize = UDim2.new(0, 95, 0, 42) 
+Grid.CellPadding = UDim2.new(0, 8, 0, 8)
+Grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+local function CreateGridBtn(text, callback)
+    local btn = Instance.new("TextButton", ButtonContainer)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    btn.Text = text
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamBold 
+    btn.TextSize = 10
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+-- Botoes
+local btnESP = CreateGridBtn("ESP: OFF", function() _G.ESP = not _G.ESP end)
+local btnTracers = CreateGridBtn("Tracers: OFF", function() _G.Tracers = not _G.Tracers end)
+local btnAim = CreateGridBtn("Aimbot: OFF", function() _G.Aimbot = not _G.Aimbot end)
+local btnWall = CreateGridBtn("Wall Check: ON", function() _G.WallCheck = not _G.WallCheck end)
+local btnTeam = CreateGridBtn("Team Check: OFF", function() _G.TeamCheck = not _G.TeamCheck end)
+local btnTarget = CreateGridBtn("Alvo: Cabeça", function() _G.TargetPart = (_G.TargetPart == "Head" and "HumanoidRootPart" or "Head") end)
+local btnFOVMinus = CreateGridBtn("FOV -", function() if _G.FOV > 10 then _G.FOV = _G.FOV - 10 end end)
+local btnFOVPlus = CreateGridBtn("FOV +", function() if _G.FOV < 800 then _G.FOV = _G.FOV + 10 end end)
+local btnColor = CreateGridBtn("Mudar Cor", function() _G.Color = Color3.fromHSV(tick() % 5 / 5, 1, 1) end)
+
+-- Lógicas de Verificação
+local function IsEnemy(v)
+    if not _G.TeamCheck then return true end
+    if LocalPlayer.Team and v.Team then return v.Team ~= LocalPlayer.Team end
+    return v.TeamColor ~= LocalPlayer.TeamColor
+end
+
+local function IsVisible(part)
+    if not _G.WallCheck then return true end
+    local char = LocalPlayer.Character
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {char, Camera}
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    local result = workspace:Raycast(Camera.CFrame.Position, (part.Position - Camera.CFrame.Position).Unit * 500, params)
+    return (not result) or result.Instance:IsDescendantOf(part.Parent)
+end
+
+-- Render Loop & Tracer/ESP Manager
+local lines = {}
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1.5
+
+RunService.RenderStepped:Connect(function()
+    MiniFPS.Text = math.floor(1/RunService.RenderStepped:Wait()) .. " FPS"
+    Glow.BackgroundColor3 = _G.Color
+    
+    local activeColor = _G.Aimbot and Color3.fromRGB(0, 255, 100) or _G.Color
+    MiniMap.TextColor3 = activeColor
+    MiniStroke.Color = activeColor
+    
+    btnESP.Text = "ESP: " .. (_G.ESP and "ON" or "OFF")
+    btnTracers.Text = "Tracers: " .. (_G.Tracers and "ON" or "OFF")
+    btnAim.Text = "Aimbot: " .. (_G.Aimbot and "ON" or "OFF")
+    btnWall.Text = "Wall: " .. (_G.WallCheck and "ON" or "OFF")
+    btnTeam.Text = "Team: " .. (_G.TeamCheck and "ON" or "OFF")
+    btnTarget.Text = "Alvo: " .. (_G.TargetPart == "Head" and "Cabeça" or "Corpo")
+    btnFOVPlus.Text = "FOV: " .. _G.FOV
+
+    FOVCircle.Radius = _G.FOV
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    FOVCircle.Visible = _G.Aimbot
+    FOVCircle.Color = _G.Color
+
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer then
+            local char = v.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local enemy = IsEnemy(v)
+                
+                -- Gestão de Highlight (ESP)
+                local hl = char:FindFirstChild("DVZ_HL")
+                if _G.ESP and enemy then
+                    if not hl then
+                        hl = Instance.new("Highlight")
+                        hl.Name = "DVZ_HL"
+                        hl.Parent = char
+                    end
+                    hl.FillColor = _G.Color
+                    hl.OutlineColor = Color3.new(1,1,1)
+                    hl.Enabled = true
+                elseif hl then
+                    hl.Enabled = false
+                end
+
+                -- Gestão de Tracers
+                if _G.Tracers and enemy then
+                    if not lines[v] then lines[v] = Drawing.new("Line") end
+                    local l = lines[v]
+                    local pos, vis = Camera:WorldToViewportPoint(char.HumanoidRootPart.Position)
+                    if vis then
+                        l.Visible = true
+                        l.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+                        l.To = Vector2.new(pos.X, pos.Y)
+                        l.Color = _G.Color
+                        l.Thickness = 1
+                    else l.Visible = false end
+                elseif lines[v] then
+                    lines[v].Visible = false
+                end
+            else
+                -- Se o personagem sumir, limpa a linha
+                if lines[v] then lines[v].Visible = false end
+            end
+        end
+    end
+
+    -- Aimbot Lock
+    if _G.Aimbot then
+        local target = nil
+        local dist = _G.FOV
+        for _, v in pairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild(_G.TargetPart) then
+                if IsEnemy(v) then
+                    local part = v.Character[_G.TargetPart]
+                    local screenPos, vis = Camera:WorldToViewportPoint(part.Position)
+                    if vis and IsVisible(part) then
+                        local mag = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                        if mag < dist then dist = mag; target = v end
+                    end
+                end
+            end
+        end
+        if target then Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Character[_G.TargetPart].Position) end
+    end
+end)
+
+local function ToggleUI() _G.Visible = not _G.Visible; Main.Visible = _G.Visible; MiniMap.Visible = not _G.Visible end
+MiniMap.MouseButton1Click:Connect(ToggleUI)
+UserInputService.InputBegan:Connect(function(i, g) if not g and i.KeyCode == Enum.KeyCode.RightShift then ToggleUI() end end)
