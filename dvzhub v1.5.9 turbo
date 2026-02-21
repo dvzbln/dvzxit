@@ -1,0 +1,365 @@
+-- DVZHUB V1.5.9 TURBO - SMOOTH AIMBOT & ULTIMATE ESP
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+-- Configurações Globais
+local _G = {
+    ESP = false,
+    BoxESP = false,
+    NameESP = false,
+    Tracers = false,
+    Aimbot = false,
+    AimMode = "Toggle",
+    Smoothness = 100,  -- NOVO: Velocidade da mira (1 a 100)
+    NoRecoil = false,
+    TeamCheck = false,
+    WallCheck = true,
+    FOV = 100,
+    TargetPart = "Head",
+    Color = Color3.fromHSV(0.5, 1, 1),
+    Visible = true
+}
+
+if CoreGui:FindFirstChild("DVZHUB_V159_TURBO") then CoreGui.DVZHUB_V159_TURBO:Destroy() end
+
+local ScreenGui = Instance.new("ScreenGui", CoreGui)
+ScreenGui.Name = "DVZHUB_V159_TURBO"
+
+-- Menu Principal
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 420, 0, 300) 
+Main.Position = UDim2.new(0.3, 0, 0.3, 0)
+Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Main.BackgroundTransparency = 0.2
+Main.Active = true
+Main.Draggable = true
+Main.Visible = _G.Visible
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 8)
+local MainStroke = Instance.new("UIStroke", Main)
+MainStroke.Thickness = 1
+
+-- Botão D (Minimizar)
+local MiniMap = Instance.new("TextButton", ScreenGui)
+MiniMap.Size = UDim2.new(0, 45, 0, 45)
+MiniMap.Position = UDim2.new(0.05, 0, 0.05, 0)
+MiniMap.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MiniMap.BackgroundTransparency = 0.2
+MiniMap.Text = "D"
+MiniMap.TextSize = 24
+MiniMap.Font = Enum.Font.GothamBold
+MiniMap.Visible = not _G.Visible
+MiniMap.Draggable = true
+Instance.new("UICorner", MiniMap).CornerRadius = UDim.new(0, 10)
+local MiniStroke = Instance.new("UIStroke", MiniMap)
+MiniStroke.Thickness = 2
+MiniStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+-- Header
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Text = "DVZHUB V1.5.9 TURBO"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 16
+Title.BackgroundTransparency = 1
+
+local DivLine = Instance.new("Frame", Main)
+DivLine.Size = UDim2.new(1, 0, 0, 2)
+DivLine.Position = UDim2.new(0, 0, 0, 35)
+DivLine.BorderSizePixel = 0
+
+-- Sistema de Abas
+local TabContainer = Instance.new("Frame", Main)
+TabContainer.Size = UDim2.new(1, 0, 0, 30)
+TabContainer.Position = UDim2.new(0, 0, 0, 37)
+TabContainer.BackgroundTransparency = 1
+
+local TabGrid = Instance.new("UIGridLayout", TabContainer)
+TabGrid.CellSize = UDim2.new(0.33, -4, 1, 0)
+TabGrid.FillDirection = Enum.FillDirection.Horizontal
+TabGrid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+local Pages = Instance.new("Frame", Main)
+Pages.Size = UDim2.new(1, 0, 1, -70)
+Pages.Position = UDim2.new(0, 0, 0, 70)
+Pages.BackgroundTransparency = 1
+
+local function CreateTab(name, isFirst)
+    local btn = Instance.new("TextButton", TabContainer)
+    btn.Text = name
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 12
+    btn.TextColor3 = isFirst and _G.Color or Color3.fromRGB(150, 150, 150)
+    btn.BackgroundTransparency = 1
+    
+    local page = Instance.new("ScrollingFrame", Pages)
+    page.Size = UDim2.new(1, 0, 1, -10)
+    page.BackgroundTransparency = 1
+    page.ScrollBarThickness = 0
+    page.Visible = isFirst
+    
+    local grid = Instance.new("UIGridLayout", page)
+    grid.CellSize = UDim2.new(0, 120, 0, 35)
+    grid.CellPadding = UDim2.new(0, 10, 0, 10)
+    grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    grid.SortOrder = Enum.SortOrder.LayoutOrder
+    
+    return btn, page
+end
+
+local tabCombatBtn, pageCombat = CreateTab("COMBAT", true)
+local tabVisualBtn, pageVisual = CreateTab("VISUALS", false)
+local tabConfigBtn, pageConfig = CreateTab("SETTINGS", false)
+
+local Tabs = {
+    {btn = tabCombatBtn, page = pageCombat},
+    {btn = tabVisualBtn, page = pageVisual},
+    {btn = tabConfigBtn, page = pageConfig}
+}
+
+for _, t in pairs(Tabs) do
+    t.btn.MouseButton1Click:Connect(function()
+        for _, otherT in pairs(Tabs) do
+            otherT.page.Visible = (otherT == t)
+            otherT.btn.TextColor3 = (otherT == t) and _G.Color or Color3.fromRGB(150, 150, 150)
+        end
+    end)
+end
+
+local function CreateToggle(parent, text, callback)
+    local btn = Instance.new("TextButton", parent)
+    btn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    btn.BackgroundTransparency = 0.3
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 10
+    btn.Text = text
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+-- ================= SEÇÕES =================
+-- Combat
+local bAim = CreateToggle(pageCombat, "Aimbot: OFF", function() _G.Aimbot = not _G.Aimbot end)
+local bAimMode = CreateToggle(pageCombat, "Modo: Toggle", function() _G.AimMode = (_G.AimMode == "Toggle" and "Hold" or "Toggle") end)
+local bTarg = CreateToggle(pageCombat, "Alvo: Cabeça", function() _G.TargetPart = (_G.TargetPart == "Head" and "HumanoidRootPart" or "Head") end)
+local bWall = CreateToggle(pageCombat, "Wall: ON", function() _G.WallCheck = not _G.WallCheck end)
+local bTeam = CreateToggle(pageCombat, "Team: OFF", function() _G.TeamCheck = not _G.TeamCheck end)
+local bRecoil = CreateToggle(pageCombat, "No Recoil: OFF", function() _G.NoRecoil = not _G.NoRecoil end)
+
+-- Visuals
+local bESP = CreateToggle(pageVisual, "Highlight: OFF", function() _G.ESP = not _G.ESP end)
+local bBox = CreateToggle(pageVisual, "Box ESP: OFF", function() _G.BoxESP = not _G.BoxESP end)
+local bName = CreateToggle(pageVisual, "Name ESP: OFF", function() _G.NameESP = not _G.NameESP end)
+local bTrac = CreateToggle(pageVisual, "Tracers: OFF", function() _G.Tracers = not _G.Tracers end)
+
+-- Settings (Sliders)
+pageConfig.ChildAdded:Connect(function(child) if child:IsA("UIGridLayout") then child.CellSize = UDim2.new(0.9, 0, 0, 40) end end)
+
+local function CreateSlider(parent, text, min, max, default, callback)
+    local container = Instance.new("Frame", parent)
+    container.BackgroundTransparency = 1
+    
+    local label = Instance.new("TextLabel", container)
+    label.Size = UDim2.new(1, 0, 0, 15)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 11
+    label.Text = text .. ": " .. default
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local bg = Instance.new("Frame", container)
+    bg.Size = UDim2.new(1, 0, 0, 10)
+    bg.Position = UDim2.new(0, 0, 0, 20)
+    bg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
+    
+    local fill = Instance.new("Frame", bg)
+    fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    fill.BackgroundColor3 = _G.Color
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+    
+    local btn = Instance.new("TextButton", bg)
+    btn.Size = UDim2.new(1, 0, 1, 0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+    
+    local dragging = false
+    btn.MouseButton1Down:Connect(function() dragging = true end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    end)
+    
+    RunService.RenderStepped:Connect(function()
+        if dragging then
+            local mouseX = UserInputService:GetMouseLocation().X
+            local rel = math.clamp((mouseX - bg.AbsolutePosition.X) / bg.AbsoluteSize.X, 0, 1)
+            fill.Size = UDim2.new(rel, 0, 1, 0)
+            local val = math.floor(min + (max - min) * rel)
+            label.Text = text .. ": " .. val
+            callback(val, rel)
+        end
+        fill.BackgroundColor3 = _G.Color
+    end)
+end
+
+CreateSlider(pageConfig, "Tamanho do FOV", 10, 800, _G.FOV, function(val) _G.FOV = val end)
+CreateSlider(pageConfig, "Velocidade da Mira (%)", 1, 100, _G.Smoothness, function(val) _G.Smoothness = val end)
+CreateSlider(pageConfig, "Cor do Hub (RGB)", 0, 100, 50, function(val, rel) _G.Color = Color3.fromHSV(rel, 1, 1) end)
+
+-- ================= DRAWING API & LOGICA =================
+local Drawings = { Tracers = {}, Boxes = {}, Names = {} }
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1.5
+
+local function ClearDrawings(v)
+    if Drawings.Tracers[v] then Drawings.Tracers[v]:Remove(); Drawings.Tracers[v] = nil end
+    if Drawings.Boxes[v] then Drawings.Boxes[v]:Remove(); Drawings.Boxes[v] = nil end
+    if Drawings.Names[v] then Drawings.Names[v]:Remove(); Drawings.Names[v] = nil end
+end
+
+local function CheckWall(part)
+    if not _G.WallCheck then return true end
+    local char = LocalPlayer.Character
+    if not char then return false end
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {char, Camera}
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    local res = workspace:Raycast(Camera.CFrame.Position, (part.Position - Camera.CFrame.Position).Unit * 1000, params)
+    return not res or res.Instance:IsDescendantOf(part.Parent)
+end
+
+RunService.RenderStepped:Connect(function()
+    DivLine.BackgroundColor3 = _G.Color
+    MainStroke.Color = _G.Color
+    tabCombatBtn.TextColor3 = pageCombat.Visible and _G.Color or Color3.fromRGB(150,150,150)
+    tabVisualBtn.TextColor3 = pageVisual.Visible and _G.Color or Color3.fromRGB(150,150,150)
+    tabConfigBtn.TextColor3 = pageConfig.Visible and _G.Color or Color3.fromRGB(150,150,150)
+
+    local isAiming = _G.Aimbot and (_G.AimMode == "Toggle" or UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2))
+    local actCol = _G.Aimbot and Color3.fromRGB(0, 255, 100) or _G.Color
+    MiniMap.TextColor3 = actCol
+    MiniStroke.Color = actCol
+
+    -- Atualiza Textos UI
+    bAim.Text = "Aimbot: " .. (_G.Aimbot and "ON" or "OFF")
+    bAimMode.Text = "Modo: " .. _G.AimMode
+    bWall.Text = "Wall: " .. (_G.WallCheck and "ON" or "OFF")
+    bTeam.Text = "Team: " .. (_G.TeamCheck and "ON" or "OFF")
+    bRecoil.Text = "No Recoil: " .. (_G.NoRecoil and "ON" or "OFF")
+    bTarg.Text = "Alvo: " .. (_G.TargetPart == "Head" and "Cabeça" or "Corpo")
+    bESP.Text = "Highlight: " .. (_G.ESP and "ON" or "OFF")
+    bBox.Text = "Box ESP: " .. (_G.BoxESP and "ON" or "OFF")
+    bName.Text = "Name ESP: " .. (_G.NameESP and "ON" or "OFF")
+    bTrac.Text = "Tracers: " .. (_G.Tracers and "ON" or "OFF")
+
+    FOVCircle.Visible = _G.Aimbot
+    FOVCircle.Radius = _G.FOV
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    FOVCircle.Color = isAiming and _G.Color or Color3.fromRGB(100, 100, 100)
+
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer then
+            local char = v.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local head = char and char:FindFirstChild("Head")
+            local isEnemy = (not _G.TeamCheck or v.Team ~= LocalPlayer.Team)
+
+            if char and hrp and head and isEnemy then
+                -- Highlight
+                local hl = char:FindFirstChild("DVZ_HL") or Instance.new("Highlight", char)
+                hl.Name = "DVZ_HL"; hl.Enabled = _G.ESP; hl.FillColor = _G.Color
+
+                local hrpPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+                
+                if onScreen then
+                    -- Tracers
+                    if _G.Tracers then
+                        if not Drawings.Tracers[v] then Drawings.Tracers[v] = Drawing.new("Line"); Drawings.Tracers[v].Thickness = 1 end
+                        Drawings.Tracers[v].Visible = true
+                        Drawings.Tracers[v].From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+                        Drawings.Tracers[v].To = Vector2.new(hrpPos.X, hrpPos.Y)
+                        Drawings.Tracers[v].Color = _G.Color
+                    elseif Drawings.Tracers[v] then Drawings.Tracers[v].Visible = false end
+
+                    -- Box
+                    if _G.BoxESP then
+                        local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+                        local legPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+                        if not Drawings.Boxes[v] then 
+                            Drawings.Boxes[v] = Drawing.new("Square")
+                            Drawings.Boxes[v].Thickness = 1
+                            Drawings.Boxes[v].Filled = false
+                        end
+                        Drawings.Boxes[v].Visible = true
+                        Drawings.Boxes[v].Size = Vector2.new(1000 / hrpPos.Z, headPos.Y - legPos.Y)
+                        Drawings.Boxes[v].Position = Vector2.new(hrpPos.X - Drawings.Boxes[v].Size.X / 2, hrpPos.Y - Drawings.Boxes[v].Size.Y / 2)
+                        Drawings.Boxes[v].Color = _G.Color
+                    elseif Drawings.Boxes[v] then Drawings.Boxes[v].Visible = false end
+
+                    -- Name
+                    if _G.NameESP then
+                        local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 1, 0))
+                        if not Drawings.Names[v] then 
+                            Drawings.Names[v] = Drawing.new("Text")
+                            Drawings.Names[v].Size = 14
+                            Drawings.Names[v].Center = true
+                            Drawings.Names[v].Outline = true
+                        end
+                        Drawings.Names[v].Visible = true
+                        Drawings.Names[v].Position = Vector2.new(headPos.X, headPos.Y - 20)
+                        Drawings.Names[v].Text = v.Name
+                        Drawings.Names[v].Color = _G.Color
+                    elseif Drawings.Names[v] then Drawings.Names[v].Visible = false end
+                else
+                    if Drawings.Tracers[v] then Drawings.Tracers[v].Visible = false end
+                    if Drawings.Boxes[v] then Drawings.Boxes[v].Visible = false end
+                    if Drawings.Names[v] then Drawings.Names[v].Visible = false end
+                end
+            else
+                ClearDrawings(v)
+                if char and char:FindFirstChild("DVZ_HL") then char.DVZ_HL.Enabled = false end
+            end
+        end
+    end
+
+    -- Aimbot Execução com Suavização (Lerp)
+    if isAiming then
+        local target, dist = nil, _G.FOV
+        for _, v in pairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild(_G.TargetPart) then
+                if (not _G.TeamCheck or v.Team ~= LocalPlayer.Team) then
+                    local p = v.Character[_G.TargetPart]
+                    local sPos, vis = Camera:WorldToViewportPoint(p.Position)
+                    if vis and CheckWall(p) then
+                        local mag = (Vector2.new(sPos.X, sPos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                        if mag < dist then dist = mag; target = p end
+                    end
+                end
+            end
+        end
+        if target then 
+            local targetCFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+            -- Aplica a matemática de suavização
+            if _G.Smoothness < 100 then
+                Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, _G.Smoothness / 100)
+            else
+                Camera.CFrame = targetCFrame
+            end
+            
+            if _G.NoRecoil then Camera.CFrame = Camera.CFrame * CFrame.Angles(0,0,0) end
+        end
+    end
+end)
+
+Players.PlayerRemoving:Connect(ClearDrawings)
+
+local function Toggle() _G.Visible = not _G.Visible; Main.Visible = _G.Visible; MiniMap.Visible = not _G.Visible end
+MiniMap.MouseButton1Click:Connect(Toggle)
+UserInputService.InputBegan:Connect(function(i, g) if not g and i.KeyCode == Enum.KeyCode.RightShift then Toggle() end end)
