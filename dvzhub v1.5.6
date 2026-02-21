@@ -1,0 +1,226 @@
+-- DVZHUB V1.5.6 - ANTI-GHOST LINES & NO RECOIL (EM TESTE)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+-- Configurações Globais
+local _G = {
+    ESP = false,
+    Tracers = false,
+    Aimbot = false,
+    NoRecoil = false,
+    TeamCheck = false,
+    WallCheck = true,
+    FOV = 100,
+    TargetPart = "Head",
+    Color = Color3.fromRGB(0, 255, 255),
+    Visible = true
+}
+
+-- Limpeza de UI anterior
+if CoreGui:FindFirstChild("DVZHUB_V156") then CoreGui.DVZHUB_V156:Destroy() end
+
+local ScreenGui = Instance.new("ScreenGui", CoreGui)
+ScreenGui.Name = "DVZHUB_V156"
+
+-- Menu Principal
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 360, 0, 280) 
+Main.Position = UDim2.new(0.3, 0, 0.3, 0)
+Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Main.Active = true
+Main.Draggable = true
+Main.Visible = _G.Visible
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
+
+-- Botão D (Minimizado)
+local MiniMap = Instance.new("TextButton", ScreenGui)
+MiniMap.Size = UDim2.new(0, 45, 0, 45)
+MiniMap.Position = UDim2.new(0.05, 0, 0.05, 0)
+MiniMap.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MiniMap.Text = "D"
+MiniMap.TextSize = 24
+MiniMap.Font = Enum.Font.GothamBold
+MiniMap.Visible = not _G.Visible
+MiniMap.Draggable = true
+Instance.new("UICorner", MiniMap).CornerRadius = UDim.new(0, 10)
+
+local MiniStroke = Instance.new("UIStroke", MiniMap)
+MiniStroke.Thickness = 2
+MiniStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+-- FPS Display
+local MiniFPS = Instance.new("TextLabel", MiniMap)
+MiniFPS.Size = UDim2.new(1, 0, 0, 20)
+MiniFPS.Position = UDim2.new(0, 0, 1, 2)
+MiniFPS.BackgroundTransparency = 1
+MiniFPS.TextColor3 = Color3.new(1, 1, 1)
+MiniFPS.TextSize = 12
+MiniFPS.Font = Enum.Font.GothamBold
+
+-- Layout
+local Glow = Instance.new("Frame", Main)
+Glow.Size = UDim2.new(1, 0, 0, 3)
+Glow.BorderSizePixel = 0
+
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.Text = "DVZHUB V1.5.6"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 18
+Title.BackgroundTransparency = 1
+
+local ButtonContainer = Instance.new("Frame", Main)
+ButtonContainer.Size = UDim2.new(0.94, 0, 0.7, 0)
+ButtonContainer.Position = UDim2.new(0.03, 0, 0.18, 0)
+ButtonContainer.BackgroundTransparency = 1
+
+local Grid = Instance.new("UIGridLayout", ButtonContainer)
+Grid.CellSize = UDim2.new(0, 108, 0, 45)
+Grid.CellPadding = UDim2.new(0, 5, 0, 5)
+Grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+local function CreateBtn(text, callback)
+    local btn = Instance.new("TextButton", ButtonContainer)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    btn.Text = text
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 9
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+-- Botoes
+local bESP = CreateBtn("ESP: OFF", function() _G.ESP = not _G.ESP end)
+local bTrac = CreateBtn("Tracers: OFF", function() _G.Tracers = not _G.Tracers end)
+local bAim = CreateBtn("Aimbot: OFF", function() _G.Aimbot = not _G.Aimbot end)
+local bWall = CreateBtn("Wall: ON", function() _G.WallCheck = not _G.WallCheck end)
+local bTeam = CreateBtn("Team: OFF", function() _G.TeamCheck = not _G.TeamCheck end)
+local bRecoil = CreateBtn("No Recoil: OFF\n(EM TESTE)", function() _G.NoRecoil = not _G.NoRecoil end)
+local bTarg = CreateBtn("Alvo: Cabeça", function() _G.TargetPart = (_G.TargetPart == "Head" and "HumanoidRootPart" or "Head") end)
+local bFOVMin = CreateBtn("FOV -", function() _G.FOV = math.max(10, _G.FOV - 10) end)
+local bFOVPlu = CreateBtn("FOV +", function() _G.FOV = math.min(800, _G.FOV + 10) end)
+local bColor = CreateBtn("FOV: 100\n(COR)", function() _G.Color = Color3.fromHSV(tick() % 5 / 5, 1, 1) end)
+
+-- Limpeza agressiva de Linhas Fantasmas
+local Tracers = {}
+local function ClearTracer(v)
+    if Tracers[v] then
+        Tracers[v].Visible = false
+        Tracers[v]:Remove()
+        Tracers[v] = nil
+    end
+end
+
+-- Wall Check
+local function CheckWall(part)
+    if not _G.WallCheck then return true end
+    local char = LocalPlayer.Character
+    if not char then return false end
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {char, Camera}
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    local result = workspace:Raycast(Camera.CFrame.Position, (part.Position - Camera.CFrame.Position).Unit * 1000, params)
+    return (not result) or result.Instance:IsDescendantOf(part.Parent)
+end
+
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1.5
+
+-- Loop Principal
+RunService.RenderStepped:Connect(function()
+    MiniFPS.Text = math.floor(1/RunService.RenderStepped:Wait()) .. " FPS"
+    Glow.BackgroundColor3 = _G.Color
+    local actCol = _G.Aimbot and Color3.fromRGB(0, 255, 100) or _G.Color
+    MiniMap.TextColor3 = actCol
+    MiniStroke.Color = actCol
+    
+    -- Sync Textos
+    bESP.Text = "ESP: " .. (_G.ESP and "ON" or "OFF")
+    bTrac.Text = "Tracers: " .. (_G.Tracers and "ON" or "OFF")
+    bAim.Text = "Aimbot: " .. (_G.Aimbot and "ON" or "OFF")
+    bWall.Text = "Wall: " .. (_G.WallCheck and "ON" or "OFF")
+    bTeam.Text = "Team: " .. (_G.TeamCheck and "ON" or "OFF")
+    bRecoil.Text = "No Recoil: " .. (_G.NoRecoil and "ON" or "OFF") .. "\n(EM TESTE)"
+    bTarg.Text = "Alvo: " .. (_G.TargetPart == "Head" and "Cabeça" or "Corpo")
+    bColor.Text = "FOV: " .. _G.FOV .. "\n(MUDAR COR)"
+
+    FOVCircle.Visible = _G.Aimbot
+    FOVCircle.Radius = _G.FOV
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    FOVCircle.Color = _G.Color
+
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer then
+            local char = v.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local isEnemy = (not _G.TeamCheck or v.Team ~= LocalPlayer.Team)
+
+            if char and hrp and isEnemy then
+                -- ESP Highlight
+                local hl = char:FindFirstChild("DVZ_HL") or Instance.new("Highlight", char)
+                hl.Name = "DVZ_HL"; hl.Enabled = _G.ESP; hl.FillColor = _G.Color
+
+                -- Lógica de Tracers (Sem Fantasmas)
+                if _G.Tracers then
+                    local pos, vis = Camera:WorldToViewportPoint(hrp.Position)
+                    if vis then
+                        if not Tracers[v] then 
+                            Tracers[v] = Drawing.new("Line") 
+                            Tracers[v].Thickness = 1
+                        end
+                        Tracers[v].Visible = true
+                        Tracers[v].From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+                        Tracers[v].To = Vector2.new(pos.X, pos.Y)
+                        Tracers[v].Color = _G.Color
+                    else
+                        if Tracers[v] then Tracers[v].Visible = false end
+                    end
+                else
+                    if Tracers[v] then Tracers[v].Visible = false end
+                end
+            else
+                -- Se o jogador morreu ou sumiu, remove a linha imediatamente
+                ClearTracer(v)
+                if char and char:FindFirstChild("DVZ_HL") then char.DVZ_HL.Enabled = false end
+            end
+        end
+    end
+
+    -- Aimbot & No Recoil (Em teste)
+    if _G.Aimbot then
+        local target, dist = nil, _G.FOV
+        for _, v in pairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild(_G.TargetPart) then
+                if (not _G.TeamCheck or v.Team ~= LocalPlayer.Team) then
+                    local p = v.Character[_G.TargetPart]
+                    local sPos, vis = Camera:WorldToViewportPoint(p.Position)
+                    if vis and CheckWall(p) then
+                        local mag = (Vector2.new(sPos.X, sPos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                        if mag < dist then dist = mag; target = p end
+                    end
+                end
+            end
+        end
+        if target then 
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position) 
+            if _G.NoRecoil then
+                 -- Estabilizador de câmera experimental
+                 Camera.CFrame = Camera.CFrame * CFrame.Angles(0,0,0)
+            end
+        end
+    end
+end)
+
+-- Remove ao sair
+Players.PlayerRemoving:Connect(ClearTracer)
+
+local function Toggle() _G.Visible = not _G.Visible; Main.Visible = _G.Visible; MiniMap.Visible = not _G.Visible end
+MiniMap.MouseButton1Click:Connect(Toggle)
+UserInputService.InputBegan:Connect(function(i, g) if not g and i.KeyCode == Enum.KeyCode.RightShift then Toggle() end end)
