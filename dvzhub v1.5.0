@@ -1,4 +1,4 @@
--- DVZHUB V1.5.0 - BORDER INDICATOR UPDATE
+-- DVZHUB V1.5.1 - TOTAL ESP & TRACER REBUILD
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
@@ -19,14 +19,14 @@ local _G = {
     Visible = true
 }
 
--- Limpeza de UI anterior
-if CoreGui:FindFirstChild("DVZHUB_V150") then CoreGui.DVZHUB_V150:Destroy() end
+-- Limpeza total de execuções anteriores
+if CoreGui:FindFirstChild("DVZHUB_V151") then CoreGui.DVZHUB_V151:Destroy() end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "DVZHUB_V150"
+ScreenGui.Name = "DVZHUB_V151"
 ScreenGui.Parent = CoreGui
 
--- Frame do Menu (Grade 3x3)
+-- UI - Main Frame
 local Main = Instance.new("Frame")
 Main.Size = UDim2.new(0, 340, 0, 230) 
 Main.Position = UDim2.new(0.3, 0, 0.3, 0)
@@ -38,7 +38,7 @@ Main.Visible = _G.Visible
 Main.Parent = ScreenGui
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
 
--- Botão D (Indicador por Borda)
+-- Botão D (Indicador de Status)
 local MiniMap = Instance.new("TextButton")
 MiniMap.Size = UDim2.new(0, 45, 0, 45)
 MiniMap.Position = UDim2.new(0.05, 0, 0.05, 0)
@@ -65,47 +65,40 @@ MiniFPS.TextSize = 12
 MiniFPS.Font = Enum.Font.GothamBold
 MiniFPS.Parent = MiniMap
 
--- Header
-local Glow = Instance.new("Frame")
+-- Header & Grid
+local Glow = Instance.new("Frame", Main)
 Glow.Size = UDim2.new(1, 0, 0, 3)
-Glow.Parent = Main
 
-local Title = Instance.new("TextLabel")
+local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, 0, 0, 40)
-Title.Text = "DVZHUB V1.5.0"
+Title.Text = "DVZHUB V1.5.1"
 Title.TextColor3 = Color3.new(1, 1, 1)
-Title.TextSize = 18 
 Title.Font = Enum.Font.GothamBold
 Title.BackgroundTransparency = 1
-Title.Parent = Main
 
--- Grid Setup
-local ButtonContainer = Instance.new("Frame")
+local ButtonContainer = Instance.new("Frame", Main)
 ButtonContainer.Size = UDim2.new(0.92, 0, 0.72, 0)
 ButtonContainer.Position = UDim2.new(0.04, 0, 0.22, 0)
 ButtonContainer.BackgroundTransparency = 1
-ButtonContainer.Parent = Main
 
-local Grid = Instance.new("UIGridLayout")
-Grid.Parent = ButtonContainer
+local Grid = Instance.new("UIGridLayout", ButtonContainer)
 Grid.CellSize = UDim2.new(0, 95, 0, 42) 
 Grid.CellPadding = UDim2.new(0, 8, 0, 8)
 Grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local function CreateGridBtn(text, callback)
-    local btn = Instance.new("TextButton")
+    local btn = Instance.new("TextButton", ButtonContainer)
     btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     btn.Text = text
     btn.TextColor3 = Color3.new(1, 1, 1)
     btn.Font = Enum.Font.GothamBold 
     btn.TextSize = 10
-    btn.Parent = ButtonContainer
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
     btn.MouseButton1Click:Connect(callback)
     return btn
 end
 
--- Botões
+-- Botoes
 local btnESP = CreateGridBtn("ESP: OFF", function() _G.ESP = not _G.ESP end)
 local btnTracers = CreateGridBtn("Tracers: OFF", function() _G.Tracers = not _G.Tracers end)
 local btnAim = CreateGridBtn("Aimbot: OFF", function() _G.Aimbot = not _G.Aimbot end)
@@ -116,7 +109,7 @@ local btnFOVMinus = CreateGridBtn("FOV -", function() if _G.FOV > 10 then _G.FOV
 local btnFOVPlus = CreateGridBtn("FOV +", function() if _G.FOV < 800 then _G.FOV = _G.FOV + 10 end end)
 local btnColor = CreateGridBtn("Mudar Cor", function() _G.Color = Color3.fromHSV(tick() % 5 / 5, 1, 1) end)
 
--- Funções de Apoio
+-- Lógicas de Verificação
 local function IsEnemy(v)
     if not _G.TeamCheck then return true end
     if LocalPlayer.Team and v.Team then return v.Team ~= LocalPlayer.Team end
@@ -133,7 +126,7 @@ local function IsVisible(part)
     return (not result) or result.Instance:IsDescendantOf(part.Parent)
 end
 
--- Render Loop
+-- Render Loop & Tracer/ESP Manager
 local lines = {}
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Thickness = 1.5
@@ -142,12 +135,10 @@ RunService.RenderStepped:Connect(function()
     MiniFPS.Text = math.floor(1/RunService.RenderStepped:Wait()) .. " FPS"
     Glow.BackgroundColor3 = _G.Color
     
-    -- Lógica de Borda do Botão "D"
     local activeColor = _G.Aimbot and Color3.fromRGB(0, 255, 100) or _G.Color
     MiniMap.TextColor3 = activeColor
     MiniStroke.Color = activeColor
     
-    -- Sync de botões
     btnESP.Text = "ESP: " .. (_G.ESP and "ON" or "OFF")
     btnTracers.Text = "Tracers: " .. (_G.Tracers and "ON" or "OFF")
     btnAim.Text = "Aimbot: " .. (_G.Aimbot and "ON" or "OFF")
@@ -162,23 +153,49 @@ RunService.RenderStepped:Connect(function()
     FOVCircle.Color = _G.Color
 
     for _, v in pairs(Players:GetPlayers()) do
-        if v ~= LocalPlayer and v.Character then
-            local enemy = IsEnemy(v)
-            local hrp = v.Character:FindFirstChild("HumanoidRootPart")
-            local hl = v.Character:FindFirstChild("DVZ_HL") or Instance.new("Highlight", v.Character)
-            hl.Enabled = (_G.ESP and enemy); hl.FillColor = _G.Color
+        if v ~= LocalPlayer then
+            local char = v.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local enemy = IsEnemy(v)
+                
+                -- Gestão de Highlight (ESP)
+                local hl = char:FindFirstChild("DVZ_HL")
+                if _G.ESP and enemy then
+                    if not hl then
+                        hl = Instance.new("Highlight")
+                        hl.Name = "DVZ_HL"
+                        hl.Parent = char
+                    end
+                    hl.FillColor = _G.Color
+                    hl.OutlineColor = Color3.new(1,1,1)
+                    hl.Enabled = true
+                elseif hl then
+                    hl.Enabled = false
+                end
 
-            if _G.Tracers and enemy and hrp then
-                if not lines[v] then lines[v] = Drawing.new("Line") end
-                local l = lines[v]
-                local pos, vis = Camera:WorldToViewportPoint(hrp.Position)
-                if vis then
-                    l.Visible = true; l.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y); l.To = Vector2.new(pos.X, pos.Y); l.Color = _G.Color; l.Thickness = 1
-                else l.Visible = false end
-            elseif lines[v] then lines[v].Visible = false end
-        elseif lines[v] then lines[v].Visible = false end
+                -- Gestão de Tracers
+                if _G.Tracers and enemy then
+                    if not lines[v] then lines[v] = Drawing.new("Line") end
+                    local l = lines[v]
+                    local pos, vis = Camera:WorldToViewportPoint(char.HumanoidRootPart.Position)
+                    if vis then
+                        l.Visible = true
+                        l.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+                        l.To = Vector2.new(pos.X, pos.Y)
+                        l.Color = _G.Color
+                        l.Thickness = 1
+                    else l.Visible = false end
+                elseif lines[v] then
+                    lines[v].Visible = false
+                end
+            else
+                -- Se o personagem sumir, limpa a linha
+                if lines[v] then lines[v].Visible = false end
+            end
+        end
     end
 
+    -- Aimbot Lock
     if _G.Aimbot then
         local target = nil
         local dist = _G.FOV
