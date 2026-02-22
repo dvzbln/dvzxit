@@ -1,0 +1,232 @@
+-- [[ ldkz v1.6.2 - FINAL RIVALS FIX ]]
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- [[ CONFIGURAÇÃO ]]
+local ldkz_Config = {
+    Box = false,
+    HealthBar = false,
+    Names = false,
+    Tracers = false,
+    TeamCheck = true,
+    Aim = false,
+    TargetPart = "Head",
+    Raycast = true,
+    FOVSize = 110,
+    ThemeColor = {255, 0, 0},
+    RGB = false,
+    LagRemover = false
+}
+
+-- [[ SISTEMA DE SALVAR ]]
+local FileName = "ldkz_v162_config.json"
+local function SaveConfig() if writefile then writefile(FileName, HttpService:JSONEncode(ldkz_Config)) end end
+local function LoadConfig()
+    if isfile and isfile(FileName) then
+        pcall(function()
+            local data = HttpService:JSONDecode(readfile(FileName))
+            for i, v in pairs(data) do ldkz_Config[i] = v end
+        end)
+    end
+end
+LoadConfig()
+
+local function GetThemeColor() return Color3.fromRGB(ldkz_Config.ThemeColor[1], ldkz_Config.ThemeColor[2], ldkz_Config.ThemeColor[3]) end
+
+-- [[ DRAWING OBJECTS ]]
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1.5; FOVCircle.Transparency = 1; FOVCircle.Visible = false
+
+local ESP_Cache = {}
+local function CreateESP(player)
+    if ESP_Cache[player] then return end
+    ESP_Cache[player] = {
+        Box = Drawing.new("Square"),
+        HealthBarBG = Drawing.new("Square"),
+        HealthBar = Drawing.new("Square"),
+        Name = Drawing.new("Text"),
+        Tracer = Drawing.new("Line")
+    }
+    local obj = ESP_Cache[player]
+    obj.Box.Thickness = 1.5; obj.Box.Filled = false
+    obj.HealthBarBG.Filled = true; obj.HealthBarBG.Color = Color3.new(0,0,0); obj.HealthBarBG.Transparency = 0.5
+    obj.HealthBar.Filled = true
+    obj.Name.Size = 13; obj.Name.Center = true; obj.Name.Outline = true
+end
+
+local rayParams = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+-- [[ INTERFACE ]]
+local sg = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+sg.Name = "ldkz_v1.6.2"; sg.ResetOnSpawn = false
+
+local main = Instance.new("Frame", sg)
+main.Size = UDim2.new(0, 260, 0, 380); main.Position = UDim2.new(0.5, -130, 0.4, 0)
+main.BackgroundColor3 = Color3.fromRGB(12, 12, 12); main.BackgroundTransparency = 0.1
+main.Active = true; main.Draggable = true
+Instance.new("UICorner", main)
+local stroke = Instance.new("UIStroke", main); stroke.Color = GetThemeColor(); stroke.Thickness = 2
+
+local tabFrame = Instance.new("Frame", main)
+tabFrame.Size = UDim2.new(1, 0, 0, 30); tabFrame.Position = UDim2.new(0,0,0,35); tabFrame.BackgroundTransparency = 1
+
+local container = Instance.new("Frame", main)
+container.Size = UDim2.new(1, -20, 1, -85); container.Position = UDim2.new(0, 10, 0, 75); container.BackgroundTransparency = 1
+
+local function createContentFrame()
+    local f = Instance.new("ScrollingFrame", container)
+    f.Size = UDim2.new(1, 0, 1, 0); f.BackgroundTransparency = 1; f.Visible = false; f.ScrollBarThickness = 0
+    Instance.new("UIListLayout", f).Padding = UDim.new(0, 5)
+    return f
+end
+
+local frameVisual = createContentFrame(); frameVisual.Visible = true
+local frameCombat = createContentFrame()
+local frameSystem = createContentFrame()
+
+local function createTabBtn(name, pos, frame)
+    local b = Instance.new("TextButton", tabFrame)
+    b.Size = UDim2.new(0.33, 0, 1, 0); b.Position = pos; b.BackgroundTransparency = 1
+    b.Text = name; b.TextColor3 = Color3.new(0.7, 0.7, 0.7); b.Font = Enum.Font.GothamBold; b.TextSize = 10
+    b.MouseButton1Click:Connect(function()
+        frameVisual.Visible = false; frameCombat.Visible = false; frameSystem.Visible = false
+        frame.Visible = true
+    end)
+    return b
+end
+
+createTabBtn("VISUAL", UDim2.new(0, 0, 0, 0), frameVisual)
+createTabBtn("COMBAT", UDim2.new(0.33, 0, 0, 0), frameCombat)
+createTabBtn("SISTEMA", UDim2.new(0.66, 0, 0, 0), frameSystem)
+
+local function createToggle(parent, text, key, callback)
+    local b = Instance.new("TextButton", parent)
+    b.Size = UDim2.new(1, 0, 0, 30); b.BackgroundColor3 = Color3.fromRGB(255, 255, 255); b.BackgroundTransparency = 0.96
+    b.Text = "  " .. text .. (ldkz_Config[key] == true and " [ON]" or (ldkz_Config[key] == false and " [OFF]" or ""))
+    b.TextColor3 = Color3.new(1, 1, 1); b.Font = Enum.Font.Gotham; b.TextSize = 11; b.TextXAlignment = Enum.TextXAlignment.Left
+    Instance.new("UICorner", b)
+    b.MouseButton1Click:Connect(function() callback(b) SaveConfig() end)
+end
+
+-- ABA VISUAL
+createToggle(frameVisual, "BOX ESP", "Box", function(b) ldkz_Config.Box = not ldkz_Config.Box; b.Text = "  BOX ESP: "..(ldkz_Config.Box and "[ON]" or "[OFF]") end)
+createToggle(frameVisual, "BARRA DE VIDA", "HealthBar", function(b) ldkz_Config.HealthBar = not ldkz_Config.HealthBar; b.Text = "  BARRA DE VIDA: "..(ldkz_Config.HealthBar and "[ON]" or "[OFF]") end)
+createToggle(frameVisual, "NOMES", "Names", function(b) ldkz_Config.Names = not ldkz_Config.Names; b.Text = "  NOMES: "..(ldkz_Config.Names and "[ON]" or "[OFF]") end)
+createToggle(frameVisual, "LINHAS", "Tracers", function(b) ldkz_Config.Tracers = not ldkz_Config.Tracers; b.Text = "  LINHAS: "..(ldkz_Config.Tracers and "[ON]" or "[OFF]") end)
+
+-- ABA COMBAT
+createToggle(frameCombat, "AIM LOCK", "Aim", function(b) ldkz_Config.Aim = not ldkz_Config.Aim; b.Text = "  AIM LOCK: "..(ldkz_Config.Aim and "[ON]" or "[OFF]") end)
+createToggle(frameCombat, "WALL CHECK", "Raycast", function(b) ldkz_Config.Raycast = not ldkz_Config.Raycast; b.Text = "  WALL CHECK: "..(ldkz_Config.Raycast and "[ON]" or "[OFF]") end)
+createToggle(frameCombat, "ALVO", "TargetPart", function(b) 
+    ldkz_Config.TargetPart = (ldkz_Config.TargetPart == "Head" and "UpperTorso" or "Head")
+    b.Text = "  ALVO: "..(ldkz_Config.TargetPart == "Head" and "CABEÇA" or "PEITO")
+end)
+
+-- Botão de Ajuste de FOV (Slider Simples)
+local btnFOV = Instance.new("TextButton", frameCombat)
+btnFOV.Size = UDim2.new(1, 0, 0, 30); btnFOV.BackgroundColor3 = Color3.fromRGB(255, 255, 255); btnFOV.BackgroundTransparency = 0.96
+btnFOV.Text = "  FOV SIZE: " .. ldkz_Config.FOVSize; btnFOV.TextColor3 = Color3.new(1, 1, 1); btnFOV.Font = Enum.Font.Gotham; btnFOV.TextSize = 11; btnFOV.TextXAlignment = Enum.TextXAlignment.Left
+Instance.new("UICorner", btnFOV)
+btnFOV.MouseButton1Click:Connect(function()
+    ldkz_Config.FOVSize = ldkz_Config.FOVSize + 20
+    if ldkz_Config.FOVSize > 300 then ldkz_Config.FOVSize = 50 end
+    btnFOV.Text = "  FOV SIZE: " .. ldkz_Config.FOVSize
+    SaveConfig()
+end)
+
+-- ABA SISTEMA
+createToggle(frameSystem, "TEAM CHECK", "TeamCheck", function(b) ldkz_Config.TeamCheck = not ldkz_Config.TeamCheck; b.Text = "  TEAM CHECK: "..(ldkz_Config.TeamCheck and "[ON]" or "[OFF]") end)
+createToggle(frameSystem, "RGB MODO", "RGB", function(b) ldkz_Config.RGB = not ldkz_Config.RGB; b.Text = "  RGB MODO: "..(ldkz_Config.RGB and "[ON]" or "[OFF]") end)
+createToggle(frameSystem, "FPS BOOST", "LagRemover", function(b) ldkz_Config.LagRemover = not ldkz_Config.LagRemover; b.Text = "  FPS BOOST: "..(ldkz_Config.LagRemover and "[ON]" or "[OFF]") end)
+
+-- [[ LOOP PRINCIPAL ]]
+RunService.RenderStepped:Connect(function()
+    local color = ldkz_Config.RGB and Color3.fromHSV(tick() % 5 / 5, 1, 1) or GetThemeColor()
+    stroke.Color = color
+    
+    -- Atualiza FOV Circle
+    FOVCircle.Visible = ldkz_Config.Aim
+    FOVCircle.Radius = ldkz_Config.FOVSize
+    FOVCircle.Position = Camera.ViewportSize/2
+    FOVCircle.Color = color
+
+    for _, p in pairs(Players:GetPlayers()) do
+        if p == LocalPlayer then continue end
+        CreateESP(p)
+        local cache = ESP_Cache[p]
+        local char = p.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChild("Humanoid")
+
+        if char and root and hum and (not ldkz_Config.TeamCheck or p.TeamColor ~= LocalPlayer.TeamColor) then
+            local pos, onScreen = Camera:WorldToViewportPoint(root.Position)
+            if onScreen then
+                local head = char:FindFirstChild("Head")
+                if head then
+                    local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+                    local legPos = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0))
+                    local height = math.abs(headPos.Y - legPos.Y)
+                    local width = height / 1.5
+
+                    cache.Box.Visible = ldkz_Config.Box
+                    cache.Box.Size = Vector2.new(width, height)
+                    cache.Box.Position = Vector2.new(pos.X - width / 2, pos.Y - height / 2)
+                    cache.Box.Color = color
+
+                    if ldkz_Config.HealthBar then
+                        local hpPct = hum.Health / hum.MaxHealth
+                        local healthHeight = hpPct * height
+                        cache.HealthBarBG.Visible = true
+                        cache.HealthBarBG.Size = Vector2.new(4, height)
+                        cache.HealthBarBG.Position = Vector2.new(cache.Box.Position.X - 6, cache.Box.Position.Y)
+                        cache.HealthBar.Visible = true
+                        cache.HealthBar.Size = Vector2.new(2, healthHeight)
+                        cache.HealthBar.Position = Vector2.new(cache.Box.Position.X - 5, cache.Box.Position.Y + (height - healthHeight))
+                        cache.HealthBar.Color = Color3.fromRGB(255, 0, 0):Lerp(Color3.fromRGB(0, 255, 0), hpPct)
+                    else cache.HealthBar.Visible = false; cache.HealthBarBG.Visible = false end
+
+                    cache.Name.Visible = ldkz_Config.Names; cache.Name.Text = p.Name; cache.Name.Position = Vector2.new(pos.X, cache.Box.Position.Y - 15); cache.Name.Color = Color3.new(1,1,1)
+                    cache.Tracer.Visible = ldkz_Config.Tracers; cache.Tracer.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y); cache.Tracer.To = Vector2.new(pos.X, pos.Y); cache.Tracer.Color = color
+                end
+            else
+                cache.Box.Visible = false; cache.HealthBar.Visible = false; cache.HealthBarBG.Visible = false; cache.Name.Visible = false; cache.Tracer.Visible = false
+            end
+        else
+            if cache then cache.Box.Visible = false; cache.HealthBar.Visible = false; cache.HealthBarBG.Visible = false; cache.Name.Visible = false; cache.Tracer.Visible = false end
+        end
+    end
+    
+    -- AIM LOCK
+    if ldkz_Config.Aim and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+        local target, closest = nil, ldkz_Config.FOVSize
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and (not ldkz_Config.TeamCheck or p.TeamColor ~= LocalPlayer.TeamColor) and p.Character then
+                local part = p.Character:FindFirstChild(ldkz_Config.TargetPart)
+                if part then
+                    local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                    if onScreen then
+                        local dist = (Vector2.new(pos.X, pos.Y) - (Camera.ViewportSize/2)).Magnitude
+                        if dist < closest then
+                            if ldkz_Config.Raycast then
+                                rayParams.FilterDescendantsInstances = {LocalPlayer.Character, p.Character}
+                                if not workspace:Raycast(Camera.CFrame.Position, part.Position - Camera.CFrame.Position, rayParams) then
+                                    target = part; closest = dist
+                                end
+                            else target = part; closest = dist end
+                        end
+                    end
+                end
+            end
+        end
+        if target then Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, target.Position) end
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(i, g)
+    if not g and i.KeyCode == Enum.KeyCode.F3 then main.Visible = not main.Visible end
+end)
