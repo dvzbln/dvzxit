@@ -1,0 +1,581 @@
+-- DVZHUB V1.7.1 - TRANSPARENCY CONTROL & GLOW SYNC
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+-- Configurações Globais
+local _G = {
+    ESP = false, BoxESP = false, NameESP = false, Tracers = false, HealthMode = "Desligado", ArmChams = false, 
+    Aimbot = false, AimMode = "Toggle", Smoothness = 100, NoRecoil = false,
+    Hitbox = false, HitboxSize = 10, Noclip = false, KillAura = false, AuraRange = 15,
+    TeamCheck = false, WallCheck = true, FOV = 100, TargetPart = "Head",
+    VisualTransp = 0, -- NOVO: 0% a 90% de transparência
+    Color = Color3.fromHSV(0.5, 1, 1), RGBMode = false, Visible = true
+}
+
+if CoreGui:FindFirstChild("DVZHUB_V171") then CoreGui.DVZHUB_V171:Destroy() end
+
+local ScreenGui = Instance.new("ScreenGui", CoreGui)
+ScreenGui.Name = "DVZHUB_V171"
+
+-- ================== UI PREMIUM (GLASSMORPHISM) ==================
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 460, 0, 360)
+Main.Position = UDim2.new(0.3, 0, 0.3, 0)
+Main.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+Main.BackgroundTransparency = 0.1
+Main.Active = true
+Main.Draggable = true
+Main.Visible = _G.Visible
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
+
+local MainStroke = Instance.new("UIStroke", Main)
+MainStroke.Thickness = 2
+MainStroke.Color = _G.Color
+
+-- Efeito Brilho Fundo (Ajustado)
+local GlowBg = Instance.new("ImageLabel", Main)
+GlowBg.Size = UDim2.new(1, 40, 1, 40)
+GlowBg.Position = UDim2.new(0, -20, 0, -20)
+GlowBg.BackgroundTransparency = 1
+GlowBg.Image = "rbxassetid://5028857084"
+GlowBg.ImageColor3 = _G.Color
+GlowBg.ImageTransparency = 0.5 -- Mais vibrante para destacar a cor
+GlowBg.ZIndex = -1
+
+local MiniMap = Instance.new("TextButton", ScreenGui)
+MiniMap.Size = UDim2.new(0, 45, 0, 45)
+MiniMap.Position = UDim2.new(0.05, 0, 0.05, 0)
+MiniMap.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
+MiniMap.BackgroundTransparency = 0.1
+MiniMap.Text = "D"
+MiniMap.TextSize = 24
+MiniMap.Font = Enum.Font.GothamBold
+MiniMap.Visible = not _G.Visible
+MiniMap.Draggable = true
+Instance.new("UICorner", MiniMap).CornerRadius = UDim.new(0, 12)
+local MiniStroke = Instance.new("UIStroke", MiniMap)
+MiniStroke.Thickness = 2.5
+MiniStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.new(1, 0, 0, 45)
+Title.Text = " DVZHUB V1.7.1"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.Font = Enum.Font.GothamBlack
+Title.TextSize = 20
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.BackgroundTransparency = 1
+local titlePad = Instance.new("UIPadding", Title); titlePad.PaddingLeft = UDim.new(0, 15)
+
+local DivLine = Instance.new("Frame", Main)
+DivLine.Size = UDim2.new(1, 0, 0, 2)
+DivLine.Position = UDim2.new(0, 0, 0, 45)
+DivLine.BorderSizePixel = 0
+DivLine.BackgroundColor3 = _G.Color
+
+local ShiftHint = Instance.new("TextLabel", Main)
+ShiftHint.Size = UDim2.new(1, 0, 0, 20)
+ShiftHint.Position = UDim2.new(0, 0, 1, -22)
+ShiftHint.BackgroundTransparency = 1
+ShiftHint.TextColor3 = Color3.fromRGB(150, 150, 150)
+ShiftHint.Font = Enum.Font.Gotham
+ShiftHint.TextSize = 11
+ShiftHint.Text = "Pressione [Shift Direito] para Ocultar/Mostrar o Menu"
+
+-- ================== SISTEMA DE ABAS ==================
+local TabContainer = Instance.new("Frame", Main)
+TabContainer.Size = UDim2.new(1, 0, 0, 35)
+TabContainer.Position = UDim2.new(0, 0, 0, 47)
+TabContainer.BackgroundTransparency = 1
+
+local TabList = Instance.new("UIListLayout", TabContainer)
+TabList.FillDirection = Enum.FillDirection.Horizontal
+TabList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+TabList.SortOrder = Enum.SortOrder.LayoutOrder
+TabList.Padding = UDim.new(0, 25)
+
+local Pages = Instance.new("Frame", Main)
+Pages.Size = UDim2.new(1, -20, 1, -120)
+Pages.Position = UDim2.new(0, 10, 0, 90)
+Pages.BackgroundTransparency = 1
+
+local function CreateTab(name, isFirst, isList)
+    local btn = Instance.new("TextButton", TabContainer)
+    btn.Size = UDim2.new(0, 90, 1, 0)
+    btn.Text = name
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 14
+    btn.TextColor3 = isFirst and _G.Color or Color3.fromRGB(100, 100, 100)
+    btn.BackgroundTransparency = 1
+    
+    local page = Instance.new("ScrollingFrame", Pages)
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.BackgroundTransparency = 1
+    page.ScrollBarThickness = 3
+    page.ScrollBarImageColor3 = _G.Color
+    page.Visible = isFirst
+    page.BorderSizePixel = 0
+    page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    page.AutomaticCanvasSize = Enum.AutomaticSize.Y 
+    
+    if isList then
+        local layout = Instance.new("UIListLayout", page)
+        layout.Padding = UDim.new(0, 12)
+        layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+    else
+        local layout = Instance.new("UIGridLayout", page)
+        layout.CellSize = UDim2.new(0, 135, 0, 42)
+        layout.CellPadding = UDim2.new(0, 12, 0, 12)
+        layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+    end
+    
+    local padding = Instance.new("UIPadding", page)
+    padding.PaddingTop = UDim.new(0, 5); padding.PaddingBottom = UDim.new(0, 15)
+    return btn, page
+end
+
+local tabCombatBtn, pageCombat = CreateTab("COMBAT", true, false)
+local tabVisualBtn, pageVisual = CreateTab("VISUALS", false, false)
+local tabConfigBtn, pageConfig = CreateTab("SETTINGS", false, true) 
+
+local Tabs = {{btn = tabCombatBtn, page = pageCombat}, {btn = tabVisualBtn, page = pageVisual}, {btn = tabConfigBtn, page = pageConfig}}
+
+for _, t in pairs(Tabs) do
+    t.btn.MouseButton1Click:Connect(function()
+        for _, otherT in pairs(Tabs) do
+            otherT.page.Visible = (otherT == t)
+            TweenService:Create(otherT.btn, TweenInfo.new(0.3), {TextColor3 = (otherT == t) and _G.Color or Color3.fromRGB(100, 100, 100)}):Play()
+        end
+    end)
+end
+
+-- ================== COMPONENTES COM HOVER ==================
+local normalBg = Color3.fromRGB(28, 28, 32)
+local hoverBg = Color3.fromRGB(40, 40, 45)
+
+local function ApplyHover(btn)
+    btn.MouseEnter:Connect(function() TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = hoverBg}):Play() end)
+    btn.MouseLeave:Connect(function() TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = normalBg}):Play() end)
+end
+
+local function CreateToggle(parent, text, callback)
+    local btn = Instance.new("TextButton", parent)
+    btn.BackgroundColor3 = normalBg
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 11
+    btn.TextWrapped = true
+    btn.Text = text
+    btn.AutoButtonColor = false
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    ApplyHover(btn)
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+local function CreateSlider(parent, text, min, max, default, callback)
+    local container = Instance.new("Frame", parent)
+    container.Size = UDim2.new(0.95, 0, 0, 45)
+    container.BackgroundColor3 = normalBg
+    container.BorderSizePixel = 0
+    Instance.new("UICorner", container).CornerRadius = UDim.new(0, 6)
+    
+    local label = Instance.new("TextLabel", container)
+    label.Size = UDim2.new(1, -10, 0, 20)
+    label.Position = UDim2.new(0, 10, 0, 5)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 12
+    label.Text = text .. ": " .. default
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local bg = Instance.new("Frame", container)
+    bg.Size = UDim2.new(1, -20, 0, 8)
+    bg.Position = UDim2.new(0, 10, 0, 28)
+    bg.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+    Instance.new("UICorner", bg).CornerRadius = UDim.new(1, 0)
+    
+    local fill = Instance.new("Frame", bg)
+    fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    fill.BackgroundColor3 = _G.Color
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+    
+    local btn = Instance.new("TextButton", bg)
+    btn.Size = UDim2.new(1, 0, 1, 0)
+    btn.BackgroundTransparency = 1
+    btn.Text = ""
+    
+    local dragging = false
+    btn.MouseButton1Down:Connect(function() dragging = true end)
+    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+    
+    RunService.RenderStepped:Connect(function()
+        if dragging then
+            local mouseX = UserInputService:GetMouseLocation().X
+            local rel = math.clamp((mouseX - bg.AbsolutePosition.X) / bg.AbsoluteSize.X, 0, 1)
+            fill.Size = UDim2.new(rel, 0, 1, 0)
+            local val = math.floor(min + (max - min) * rel)
+            label.Text = text .. ": " .. val
+            callback(val, rel)
+        end
+        fill.BackgroundColor3 = _G.Color
+    end)
+end
+
+local function CreateActionBtn(parent, text, callback)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(0.95, 0, 0, 35)
+    btn.BackgroundColor3 = normalBg
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamBlack
+    btn.TextSize = 12
+    btn.Text = text
+    btn.AutoButtonColor = false
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    local stroke = Instance.new("UIStroke", btn)
+    stroke.Color = _G.Color; stroke.Thickness = 1
+    ApplyHover(btn)
+    btn.MouseButton1Click:Connect(function() callback(btn) end)
+    return btn, stroke
+end
+
+-- ================== PREENCHENDO AS ABAS ==================
+-- Combat
+local bAim = CreateToggle(pageCombat, "Aimbot: OFF", function() _G.Aimbot = not _G.Aimbot end)
+local bAimMode = CreateToggle(pageCombat, "Modo: Toggle", function() _G.AimMode = (_G.AimMode == "Toggle" and "Hold" or "Toggle") end)
+local bTarg = CreateToggle(pageCombat, "Alvo: Cabeça", function() _G.TargetPart = (_G.TargetPart == "Head" and "HumanoidRootPart" or "Head") end)
+local bWall = CreateToggle(pageCombat, "Wall Check: ON", function() _G.WallCheck = not _G.WallCheck end) 
+local bTeam = CreateToggle(pageCombat, "Team Check: OFF", function() _G.TeamCheck = not _G.TeamCheck end)
+local bRecoil = CreateToggle(pageCombat, "No Recoil: OFF", function() _G.NoRecoil = not _G.NoRecoil end)
+local bNoclip = CreateToggle(pageCombat, "Noclip (Z): OFF", function() _G.Noclip = not _G.Noclip end)
+local bAura = CreateToggle(pageCombat, "Kill Aura: OFF", function() _G.KillAura = not _G.KillAura end)
+local bHitbox = CreateToggle(pageCombat, "Hitbox: OFF", function() _G.Hitbox = not _G.Hitbox; if not _G.Hitbox then RestoreHitboxes() end end)
+
+-- Visuals
+local bESP = CreateToggle(pageVisual, "Highlight: OFF", function() _G.ESP = not _G.ESP end)
+local bBox = CreateToggle(pageVisual, "Box ESP: OFF", function() _G.BoxESP = not _G.BoxESP end)
+local bName = CreateToggle(pageVisual, "Name ESP: OFF", function() _G.NameESP = not _G.NameESP end)
+local bHealth = CreateToggle(pageVisual, "Vida: Desligado", function() 
+    if _G.HealthMode == "Desligado" then _G.HealthMode = "Barra"
+    elseif _G.HealthMode == "Barra" then _G.HealthMode = "Texto"
+    elseif _G.HealthMode == "Texto" then _G.HealthMode = "Ambos"
+    else _G.HealthMode = "Desligado" end
+end)
+local bTrac = CreateToggle(pageVisual, "Tracers: OFF", function() _G.Tracers = not _G.Tracers end)
+local bArm = CreateToggle(pageVisual, "Cor Mão/Arma: OFF", function() _G.ArmChams = not _G.ArmChams; if not _G.ArmChams then RestoreChams() end end) 
+
+-- Settings 
+CreateSlider(pageConfig, "Transparência ESP/FOV (%)", 0, 90, _G.VisualTransp, function(val) _G.VisualTransp = val end) -- NOVO SLIDER
+CreateSlider(pageConfig, "Tamanho do FOV", 10, 800, _G.FOV, function(val) _G.FOV = val end)
+CreateSlider(pageConfig, "Suavidade da Mira (%)", 1, 100, _G.Smoothness, function(val) _G.Smoothness = val end)
+CreateSlider(pageConfig, "Tamanho da Hitbox", 2, 50, _G.HitboxSize, function(val) _G.HitboxSize = val end) 
+CreateSlider(pageConfig, "Alcance da Kill Aura", 5, 30, _G.AuraRange, function(val) _G.AuraRange = val end) 
+CreateSlider(pageConfig, "Cor Manual (Arraste)", 0, 100, 50, function(val, rel) if not _G.RGBMode then _G.Color = Color3.fromHSV(rel, 1, 1) end end)
+
+local btnRGB, strokeRGB = CreateActionBtn(pageConfig, "Modo Arco-Íris: OFF", function(self) _G.RGBMode = not _G.RGBMode end)
+
+local btnFPS, strokeFPS = CreateActionBtn(pageConfig, "🚀 OTIMIZAR FPS", function(self)
+    self.Text = "OTIMIZANDO..."
+    task.spawn(function()
+        Lighting.GlobalShadows = false; Lighting.FogEnd = 9e9; Lighting.ShadowSoftness = 0
+        for _, v in pairs(Lighting:GetDescendants()) do if v:IsA("PostEffect") or v:IsA("Atmosphere") then v.Enabled = false end end
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") and not v.Parent:FindFirstChild("Humanoid") then v.Material = Enum.Material.SmoothPlastic; v.Reflectance = 0
+            elseif v:IsA("Decal") or v:IsA("Texture") then v.Transparency = 1
+            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then v.Lifetime = NumberRange.new(0) end
+        end
+        task.wait(0.5); self.Text = "FPS OTIMIZADO!"
+    end)
+end)
+
+local btnSave, strokeSave = CreateActionBtn(pageConfig, "💾 SALVAR CONFIG", function(self) 
+    local data = {ESP=_G.ESP, BoxESP=_G.BoxESP, NameESP=_G.NameESP, HealthMode=_G.HealthMode, Tracers=_G.Tracers, ArmChams=_G.ArmChams, Aimbot=_G.Aimbot, AimMode=_G.AimMode, Smoothness=_G.Smoothness, NoRecoil=_G.NoRecoil, Noclip=_G.Noclip, KillAura=_G.KillAura, AuraRange=_G.AuraRange, Hitbox=_G.Hitbox, HitboxSize=_G.HitboxSize, VisualTransp=_G.VisualTransp, TeamCheck=_G.TeamCheck, WallCheck=_G.WallCheck, FOV=_G.FOV, TargetPart=_G.TargetPart, RGBMode=_G.RGBMode, ColorR=_G.Color.R, ColorG=_G.Color.G, ColorB=_G.Color.B}
+    pcall(function() writefile("DVZHUB_"..LocalPlayer.Name..".json", HttpService:JSONEncode(data)) end)
+    self.Text = "SALVO!"; task.wait(1); self.Text = "💾 SALVAR CONFIG"
+end)
+
+local btnLoad, strokeLoad = CreateActionBtn(pageConfig, "📂 CARREGAR CONFIG", function(self) 
+    pcall(function()
+        local conf = HttpService:JSONDecode(readfile("DVZHUB_"..LocalPlayer.Name..".json"))
+        _G.ESP=conf.ESP; _G.BoxESP=conf.BoxESP; _G.NameESP=conf.NameESP; _G.HealthMode=conf.HealthMode or "Desligado"; _G.Tracers=conf.Tracers; _G.ArmChams=conf.ArmChams; _G.Aimbot=conf.Aimbot; _G.AimMode=conf.AimMode; _G.Smoothness=conf.Smoothness; _G.NoRecoil=conf.NoRecoil; _G.Noclip=conf.Noclip or false; _G.KillAura=conf.KillAura or false; _G.AuraRange=conf.AuraRange or 15; _G.Hitbox=conf.Hitbox; _G.HitboxSize=conf.HitboxSize; _G.VisualTransp=conf.VisualTransp or 0; _G.TeamCheck=conf.TeamCheck; _G.WallCheck=conf.WallCheck; _G.FOV=conf.FOV; _G.TargetPart=conf.TargetPart; _G.RGBMode=conf.RGBMode; _G.Color = Color3.new(conf.ColorR, conf.ColorG, conf.ColorB)
+    end)
+    self.Text = "CARREGADO!"; task.wait(1); self.Text = "📂 CARREGAR CONFIG"
+end)
+
+pcall(function()
+    local conf = HttpService:JSONDecode(readfile("DVZHUB_"..LocalPlayer.Name..".json"))
+    _G.RGBMode = conf.RGBMode; if not _G.RGBMode then _G.Color = Color3.new(conf.ColorR, conf.ColorG, conf.ColorB) end
+end)
+
+-- ================= DRAWING API E LÓGICA =================
+local Drawings = { Tracers = {}, Boxes = {}, Names = {}, HealthOutlines = {}, HealthBars = {}, HealthTexts = {} }
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1.5
+
+local ChamsCache = {}
+local ActiveArmParts = {}
+local HitboxCache = {}
+
+function RestoreChams()
+    for v, data in pairs(ChamsCache) do if v and v.Parent then v.Material = data.Mat; v.Color = data.Col end end
+    table.clear(ChamsCache); table.clear(ActiveArmParts)
+end
+
+function RestoreHitboxes()
+    for part, data in pairs(HitboxCache) do if part and part.Parent then part.Size = data.Size; part.Transparency = data.Trans; part.CanCollide = data.Col end end
+    table.clear(HitboxCache)
+end
+
+local function IsArmOrWeapon(v)
+    if not v:IsA("BasePart") or v.Transparency == 1 then return false end
+    local name = string.lower(v.Name)
+    if string.find(name, "arm") or string.find(name, "hand") or string.find(name, "glove") then return true end
+    if v:FindFirstAncestorWhichIsA("Tool") or v:IsDescendantOf(Camera) then return true end
+    return false
+end
+
+-- Lógica No Recoil Avançado
+task.spawn(function()
+    while task.wait(0.5) do
+        if _G.NoRecoil and LocalPlayer.Character then
+            for _, v in pairs(LocalPlayer.Character:GetDescendants()) do
+                if v:IsA("NumberValue") or v:IsA("IntValue") then
+                    local name = string.lower(v.Name)
+                    if string.find(name, "recoil") or string.find(name, "spread") or string.find(name, "kick") then v.Value = 0 end
+                end
+            end
+        end
+    end
+end)
+
+task.spawn(function()
+    while task.wait(1) do
+        if _G.ArmChams then
+            local targets = {}
+            if LocalPlayer.Character then for _, v in pairs(LocalPlayer.Character:GetDescendants()) do table.insert(targets, v) end end
+            for _, v in pairs(Camera:GetDescendants()) do table.insert(targets, v) end
+            for _, v in pairs(targets) do
+                if IsArmOrWeapon(v) then
+                    if not ChamsCache[v] then ChamsCache[v] = {Mat = v.Material, Col = v.Color} end
+                    v.Material = Enum.Material.ForceField; v.Color = _G.Color; ActiveArmParts[v] = true
+                end
+            end
+        end
+    end
+end)
+
+task.spawn(function()
+    while task.wait(0.1) do
+        if _G.KillAura and LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool") then
+            local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+            local handle = tool:FindFirstChild("Handle") or tool:FindFirstChildWhichIsA("BasePart")
+            if handle then
+                for _, v in pairs(Players:GetPlayers()) do
+                    if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
+                        if (not _G.TeamCheck or v.Team ~= LocalPlayer.Team) then
+                            if (v.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude <= _G.AuraRange then
+                                pcall(function() firetouchinterest(handle, v.Character.HumanoidRootPart, 0); firetouchinterest(handle, v.Character.HumanoidRootPart, 1) end)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+RunService.Stepped:Connect(function()
+    if _G.Noclip and LocalPlayer.Character then
+        for _, v in pairs(LocalPlayer.Character:GetDescendants()) do if v:IsA("BasePart") and v.CanCollide then v.CanCollide = false end end
+    end
+end)
+
+local function ClearDrawings(v)
+    if Drawings.Tracers[v] then Drawings.Tracers[v]:Remove(); Drawings.Tracers[v] = nil end
+    if Drawings.Boxes[v] then Drawings.Boxes[v]:Remove(); Drawings.Boxes[v] = nil end
+    if Drawings.Names[v] then Drawings.Names[v]:Remove(); Drawings.Names[v] = nil end
+    if Drawings.HealthOutlines[v] then Drawings.HealthOutlines[v]:Remove(); Drawings.HealthOutlines[v] = nil end
+    if Drawings.HealthBars[v] then Drawings.HealthBars[v]:Remove(); Drawings.HealthBars[v] = nil end
+    if Drawings.HealthTexts[v] then Drawings.HealthTexts[v]:Remove(); Drawings.HealthTexts[v] = nil end
+end
+
+local function CheckWall(part)
+    if not _G.WallCheck then return true end
+    local char = LocalPlayer.Character
+    if not char then return false end
+    local params = RaycastParams.new(); params.FilterDescendantsInstances = {char, Camera}; params.FilterType = Enum.RaycastFilterType.Exclude
+    local res = workspace:Raycast(Camera.CFrame.Position, (part.Position - Camera.CFrame.Position).Unit * 1000, params)
+    return not res or res.Instance:IsDescendantOf(part.Parent)
+end
+
+RunService.RenderStepped:Connect(function()
+    if _G.RGBMode then _G.Color = Color3.fromHSV(tick() % 5 / 5, 1, 1) end
+
+    -- Sincronizando o GlowBg perfeitamente
+    DivLine.BackgroundColor3 = _G.Color; MainStroke.Color = _G.Color; GlowBg.ImageColor3 = _G.Color
+    strokeRGB.Color = _G.Color; strokeFPS.Color = _G.Color; strokeSave.Color = _G.Color; strokeLoad.Color = _G.Color
+    pageCombat.ScrollBarImageColor3 = _G.Color; pageVisual.ScrollBarImageColor3 = _G.Color; pageConfig.ScrollBarImageColor3 = _G.Color
+
+    for _, t in pairs(Tabs) do if t.page.Visible then t.btn.TextColor3 = _G.Color end end
+
+    local isAiming = _G.Aimbot and (_G.AimMode == "Toggle" or UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2))
+    local actCol = _G.Aimbot and Color3.fromRGB(0, 255, 100) or _G.Color
+    MiniMap.TextColor3 = actCol; MiniStroke.Color = actCol
+
+    bAim.Text = "Aimbot: " .. (_G.Aimbot and "ON" or "OFF")
+    bAimMode.Text = "Modo: " .. _G.AimMode
+    bTarg.Text = "Alvo: " .. (_G.TargetPart == "Head" and "Cabeça" or "Corpo")
+    bWall.Text = "Wall Check: " .. (_G.WallCheck and "ON" or "OFF")
+    bTeam.Text = "Team Check: " .. (_G.TeamCheck and "ON" or "OFF")
+    bRecoil.Text = "No Recoil: " .. (_G.NoRecoil and "ON" or "OFF")
+    bNoclip.Text = "Noclip (Z): " .. (_G.Noclip and "ON" or "OFF")
+    bAura.Text = "Kill Aura: " .. (_G.KillAura and "ON" or "OFF")
+    bHitbox.Text = "Hitbox: " .. (_G.Hitbox and "ON" or "OFF")
+    
+    bESP.Text = "Highlight: " .. (_G.ESP and "ON" or "OFF")
+    bBox.Text = "Box ESP: " .. (_G.BoxESP and "ON" or "OFF")
+    bName.Text = "Name ESP: " .. (_G.NameESP and "ON" or "OFF")
+    bHealth.Text = "Vida: " .. _G.HealthMode
+    bTrac.Text = "Tracers: " .. (_G.Tracers and "ON" or "OFF")
+    bArm.Text = "Cor Mão/Arma: " .. (_G.ArmChams and "ON" or "OFF")
+    btnRGB.Text = "Modo Arco-Íris: " .. (_G.RGBMode and "ON" or "OFF")
+
+    -- Calculando a Transparência
+    local robloxTransp = _G.VisualTransp / 100
+    local drawingTransp = 1 - (_G.VisualTransp / 100)
+
+    FOVCircle.Visible = _G.Aimbot; FOVCircle.Radius = _G.FOV
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    FOVCircle.Color = isAiming and _G.Color or Color3.fromRGB(100, 100, 100)
+    FOVCircle.Transparency = drawingTransp
+
+    if _G.ArmChams and _G.RGBMode then
+        for v, _ in pairs(ActiveArmParts) do if v and v.Parent then v.Color = _G.Color else ActiveArmParts[v] = nil end end
+    end
+
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer then
+            local char = v.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local head = char and char:FindFirstChild("Head")
+            local humanoid = char and char:FindFirstChild("Humanoid")
+            local isEnemy = (not _G.TeamCheck or v.Team ~= LocalPlayer.Team)
+
+            if char and hrp and head and humanoid and humanoid.Health > 0 and isEnemy then
+                if _G.Hitbox then
+                    local targetP = char:FindFirstChild(_G.TargetPart)
+                    if targetP then
+                        if not HitboxCache[targetP] then HitboxCache[targetP] = {Size = targetP.Size, Trans = targetP.Transparency, Col = targetP.CanCollide} end
+                        targetP.Size = Vector3.new(_G.HitboxSize, _G.HitboxSize, _G.HitboxSize); targetP.Transparency = 0.6; targetP.CanCollide = false
+                    end
+                end
+
+                local hl = char:FindFirstChild("DVZ_HL") or Instance.new("Highlight", char)
+                hl.Name = "DVZ_HL"
+                hl.Enabled = _G.ESP
+                hl.FillColor = _G.Color
+                hl.FillTransparency = robloxTransp
+                hl.OutlineTransparency = robloxTransp
+
+                local hrpPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+                
+                if onScreen then
+                    local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+                    local legPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+                    local height = headPos.Y - legPos.Y
+                    local width = 1000 / hrpPos.Z
+
+                    if _G.Tracers then
+                        if not Drawings.Tracers[v] then Drawings.Tracers[v] = Drawing.new("Line"); Drawings.Tracers[v].Thickness = 1 end
+                        Drawings.Tracers[v].Visible = true; Drawings.Tracers[v].From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+                        Drawings.Tracers[v].To = Vector2.new(hrpPos.X, hrpPos.Y)
+                        Drawings.Tracers[v].Color = _G.Color
+                        Drawings.Tracers[v].Transparency = drawingTransp
+                    elseif Drawings.Tracers[v] then Drawings.Tracers[v].Visible = false end
+
+                    if _G.BoxESP then
+                        if not Drawings.Boxes[v] then Drawings.Boxes[v] = Drawing.new("Square"); Drawings.Boxes[v].Thickness = 1; Drawings.Boxes[v].Filled = false end
+                        Drawings.Boxes[v].Visible = true; Drawings.Boxes[v].Size = Vector2.new(width, height)
+                        Drawings.Boxes[v].Position = Vector2.new(hrpPos.X - width / 2, hrpPos.Y - height / 2)
+                        Drawings.Boxes[v].Color = _G.Color
+                        Drawings.Boxes[v].Transparency = drawingTransp
+                    elseif Drawings.Boxes[v] then Drawings.Boxes[v].Visible = false end
+
+                    if _G.NameESP then
+                        if not Drawings.Names[v] then Drawings.Names[v] = Drawing.new("Text"); Drawings.Names[v].Size = 14; Drawings.Names[v].Center = true; Drawings.Names[v].Outline = true end
+                        Drawings.Names[v].Visible = true; Drawings.Names[v].Position = Vector2.new(headPos.X, headPos.Y - 20)
+                        Drawings.Names[v].Text = v.Name
+                        Drawings.Names[v].Color = _G.Color
+                        Drawings.Names[v].Transparency = drawingTransp
+                    elseif Drawings.Names[v] then Drawings.Names[v].Visible = false end
+
+                    if _G.HealthMode ~= "Desligado" then
+                        local healthPct = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+                        local barHeight = height * healthPct
+                        local hpColor = Color3.new(1 - healthPct, healthPct, 0)
+                        
+                        if not Drawings.HealthOutlines[v] then
+                            Drawings.HealthOutlines[v] = Drawing.new("Square"); Drawings.HealthOutlines[v].Filled = false; Drawings.HealthOutlines[v].Thickness = 1; Drawings.HealthOutlines[v].Color = Color3.new(0,0,0)
+                            Drawings.HealthBars[v] = Drawing.new("Square"); Drawings.HealthBars[v].Filled = true; Drawings.HealthBars[v].Thickness = 1
+                            Drawings.HealthTexts[v] = Drawing.new("Text"); Drawings.HealthTexts[v].Size = 13; Drawings.HealthTexts[v].Outline = true; Drawings.HealthTexts[v].Center = true
+                        end
+                        
+                        if _G.HealthMode == "Barra" or _G.HealthMode == "Ambos" then
+                            Drawings.HealthOutlines[v].Visible = true; Drawings.HealthOutlines[v].Size = Vector2.new(4, height + 2); Drawings.HealthOutlines[v].Position = Vector2.new(hrpPos.X - width / 2 - 8, hrpPos.Y - height / 2 - 1)
+                            Drawings.HealthBars[v].Visible = true; Drawings.HealthBars[v].Size = Vector2.new(2, barHeight); Drawings.HealthBars[v].Position = Vector2.new(hrpPos.X - width / 2 - 7, hrpPos.Y - height / 2 + (height - barHeight)); Drawings.HealthBars[v].Color = hpColor
+                            Drawings.HealthOutlines[v].Transparency = drawingTransp
+                            Drawings.HealthBars[v].Transparency = drawingTransp
+                        else Drawings.HealthOutlines[v].Visible = false; Drawings.HealthBars[v].Visible = false end
+
+                        if _G.HealthMode == "Texto" or _G.HealthMode == "Ambos" then
+                            Drawings.HealthTexts[v].Visible = true; Drawings.HealthTexts[v].Text = tostring(math.floor(healthPct * 100)) .. " HP"; Drawings.HealthTexts[v].Position = Vector2.new(hrpPos.X - width / 2 - 20, hrpPos.Y - height / 2 + (height - barHeight) - 5); Drawings.HealthTexts[v].Color = hpColor
+                            Drawings.HealthTexts[v].Transparency = drawingTransp
+                        else Drawings.HealthTexts[v].Visible = false end
+                    elseif Drawings.HealthBars[v] then
+                        Drawings.HealthOutlines[v].Visible = false; Drawings.HealthBars[v].Visible = false; Drawings.HealthTexts[v].Visible = false
+                    end
+                else ClearDrawings(v) end
+            else ClearDrawings(v) if char and char:FindFirstChild("DVZ_HL") then char.DVZ_HL.Enabled = false end end
+        end
+    end
+
+    if isAiming then
+        local target, dist = nil, _G.FOV
+        for _, v in pairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild(_G.TargetPart) and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
+                if (not _G.TeamCheck or v.Team ~= LocalPlayer.Team) then
+                    local p = v.Character[_G.TargetPart]
+                    local sPos, vis = Camera:WorldToViewportPoint(p.Position)
+                    if vis and CheckWall(p) then
+                        local mag = (Vector2.new(sPos.X, sPos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                        if mag < dist then dist = mag; target = p end
+                    end
+                end
+            end
+        end
+        if target then 
+            local tCFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+            Camera.CFrame = _G.Smoothness < 100 and Camera.CFrame:Lerp(tCFrame, _G.Smoothness / 100) or tCFrame
+        end
+    end
+end)
+
+Players.PlayerRemoving:Connect(ClearDrawings)
+local function Toggle() _G.Visible = not _G.Visible; Main.Visible = _G.Visible; MiniMap.Visible = not _G.Visible end
+MiniMap.MouseButton1Click:Connect(Toggle)
+UserInputService.InputBegan:Connect(function(i, g) 
+    if not g then
+        if i.KeyCode == Enum.KeyCode.RightShift then Toggle() end
+        if i.KeyCode == Enum.KeyCode.Z then _G.Noclip = not _G.Noclip end 
+    end 
+end)
